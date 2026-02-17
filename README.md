@@ -1,67 +1,74 @@
 # Smart Bookmark App
 
-This is a Smart Bookmark Manager built with Next.js 15 (App Router), Supabase (Auth, Database, Realtime), and Tailwind CSS.
+A full-stack bookmark manager built with **Next.js 15 (App Router)**, **Supabase**, and **Tailwind CSS**.
 
-## Features
+This was built as part of a coding assignment to demonstrate full-stack capabilities, specifically focusing on authentication, database security, and real-time data synchronization.
 
-- **Google Authentication**: Sign up and log in using Google OAuth (no email/password).
-- **Private Bookmarks**: Ensure bookmarks are visible only to the creator (Row Level Security).
-- **Real-time Updates**: Bookmark list updates instantly across tabs/devices without refresh.
-- **Add/Delete Bookmarks**: Manage your bookmark collection easily.
+## 🚀 Features
 
-## Tech Stack
+- **Google OAuth Only**: Simplified login experience using only Google Sign-In (no email/passwords).
+- **Private Data**: Every user has their own private list of bookmarks, secured by Row Level Security (RLS).
+- **Real-time Updates**: changes made in one tab/device reflect instantly in others without refreshing.
+- **Responsive UI**: Clean, minimal interface built with Tailwind CSS.
 
-- **Framework**: Next.js 15 (App Router)
-- **Database & Auth**: Supabase
-- **Styling**: Tailwind CSS
-- **Icons**: Hand-crafted SVGs (Zero external icon dependency)
+## 🛠 Tech Stack
 
-## Setup Instructions
+- **Frontend**: Next.js 15 (App Router), React, Tailwind CSS
+- **Backend**: Supabase (PostgreSQL, Auth, Realtime)
+- **Utilities**: Hand-crafted SVG icons (zero external icon library dependency to keep the bundle small)
 
-### 1. Clone the repository
+---
 
-```bash
-git clone <your-repo-url>
-cd smart-bookmark-app
-```
+## 💡 Challenges Faced & Solutions
 
-### 2. Install Dependencies
+During the development of this application, I encountered a few interesting challenges:
 
-```bash
-npm install
-```
+### 1. Enabling Real-time Updates
+**The Problem:** Initially, my real-time subscription code in the frontend was correct, but no events were firing when I inserted data.
+**The Solution:** I discovered that Supabase disables Realtime Replication by default for new tables to save resources. I had to manually enable "Replication" for the `bookmarks` table in the Supabase Dashboard (Database -> Replication settings).
 
-### 3. Environment Variables
+### 2. Next.js Middleware & Session Management
+**The Problem:** Next.js Server Components need valid cookies to render protected routes, but cookies can expire.
+**The Solution:** I implemented a robust `middleware.ts` that refreshes the Supabase session before loading any Server Component. This ensures that the user stays logged in seamlessy and the server always has access to the latest auth state.
 
-Create a `.env.local` file in the root directory and add your Supabase credentials:
+### 3. Row Level Security (RLS)
+**The Problem:** I needed to ensure that User A could never see User B's bookmarks, even if they tried to access the API directly.
+**The Solution:** I wrote SQL policies that strictly enforce `auth.uid() = user_id`. This means the database itself rejects any query attempting to access unauthorized data, providing a strong security layer beyond just the frontend logic.
 
-```bash
-NEXT_PUBLIC_SUPABASE_URL=your-project-url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-```
+---
 
-### 4. Database Setup
+## 📦 Setup Instructions
 
-Run the SQL commands in `schema.sql` in your Supabase SQL Editor to create the `bookmarks` table and set up Row Level Security (RLS) policies.
+If you want to run this project locally:
 
-**Important:** Enable "Realtime" for the `bookmarks` table in your Supabase Dashboard (Database -> Replication -> Source).
+1.  **Clone the repository:**
+    ```bash
+    git clone <your-repo-url>
+    cd smart-bookmark-app
+    ```
 
-### 5. Run Locally
+2.  **Install Dependencies:**
+    ```bash
+    npm install
+    ```
 
-```bash
-npm run dev
-```
+3.  **Configure Environment Variables:**
+    Create a `.env.local` file in the root directory:
+    ```bash
+    NEXT_PUBLIC_SUPABASE_URL=your-project-url
+    NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+    ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+4.  **Database Setup:**
+    Run the SQL commands in `schema.sql` in your Supabase SQL Editor.
+    *Important: Enable "Realtime" for the `bookmarks` table in Supabase Dashboard.*
 
-## Deployment on Vercel
+5.  **Run Locally:**
+    ```bash
+    npm run dev
+    ```
+    Open [http://localhost:3000](http://localhost:3000).
 
-1. Push your code to a GitHub repository.
-2. Import the repository in Vercel.
-3. Add the Environment Variables (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`) in the Vercel Project Settings.
-4. Deploy!
+## 🚀 Deployment
 
-## Notes
-
-- **Realtime**: The application uses Supabase Realtime to update the UI instantly when bookmarks are added or deleted.
-- **Security**: RLS policies ensure users can only access their own data.
+The app is deployed on Vercel. You can view the live demo here: [Add Your Live URL Here]
