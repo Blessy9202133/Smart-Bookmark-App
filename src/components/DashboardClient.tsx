@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 
 type Bookmark = {
@@ -13,39 +14,39 @@ type Bookmark = {
 
 // SVG Icons – fixed for React/TS
 const PlusIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <g>
-      <line x1="12" y1="5" x2="12" y2="19" />
-      <line x1="5" y1="12" x2="19" y2="12" />
-    </g>
-  </svg>
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <g>
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+        </g>
+    </svg>
 );
 
 const TrashIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="3 6 5 6 21 6" />
-    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-    <g>
-    <line x1="10" y1="11" x2="10" y2="17" />
-    <line x1="14" y1="11" x2="14" y2="17" />
-    </g>
-  </svg>
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="3 6 5 6 21 6" />
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+        <g>
+            <line x1="10" y1="11" x2="10" y2="17" />
+            <line x1="14" y1="11" x2="14" y2="17" />
+        </g>
+    </svg>
 );
 
 const ExternalLinkIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-    <polyline points="15 3 21 3 21 9" />
-    <g>
-    <line x1="10" y1="14" x2="21" y2="3" />
-    </g>
-  </svg>
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+        <polyline points="15 3 21 3 21 9" />
+        <g>
+            <line x1="10" y1="14" x2="21" y2="3" />
+        </g>
+    </svg>
 );
 
 const LoaderIcon = () => (
-  <svg className="animate-spin" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-  </svg>
+    <svg className="animate-spin" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+    </svg>
 );
 
 export default function DashboardClient({
@@ -61,10 +62,19 @@ export default function DashboardClient({
     const [isAdding, setIsAdding] = useState(false);
     const supabase = useMemo(() => createClient(), []);
 
+    const router = useRouter();
+
+    // Sync local state with server state when router.refresh() occurs
+    useEffect(() => {
+        if (initialBookmarks) {
+            setBookmarks(initialBookmarks);
+        }
+    }, [initialBookmarks]);
+
     useEffect(() => {
         // Realtime subscription
         const channel = supabase
-            .channel("realtime bookmarks")
+            .channel("realtime-bookmarks")
             .on(
                 "postgres_changes",
                 {
@@ -72,19 +82,28 @@ export default function DashboardClient({
                     schema: "public",
                     table: "bookmarks",
                 },
-                (payload) => {
+                (payload: any) => {
+                    console.log("Realtime event received:", payload);
                     if (payload.eventType === "INSERT") {
-                        setBookmarks((prev) => [payload.new as Bookmark, ...prev]);
+                        const newBookmark = payload.new as Bookmark;
+                        setBookmarks((prev) => {
+                            // prevent duplicates if we already added it optimistically
+                            if (prev.some(b => b.id === newBookmark.id)) return prev;
+                            return [newBookmark, ...prev];
+                        });
+                        router.refresh();
                     } else if (payload.eventType === "DELETE") {
                         setBookmarks((prev) =>
                             prev.filter((bookmark) => bookmark.id !== payload.old.id)
                         );
+                        router.refresh();
                     } else if (payload.eventType === "UPDATE") {
                         setBookmarks((prev) =>
                             prev.map((bookmark) =>
                                 bookmark.id === payload.new.id ? (payload.new as Bookmark) : bookmark
                             )
                         );
+                        router.refresh();
                     }
                 }
             )
@@ -93,25 +112,32 @@ export default function DashboardClient({
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [supabase, userId]);
+    }, [supabase, userId, router]);
 
     const addBookmark = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newTitle || !newUrl) return;
 
         setIsAdding(true);
-        const { error } = await supabase.from("bookmarks").insert({
-            title: newTitle,
-            url: newUrl,
-            user_id: userId,
-        });
+        const { data, error } = await supabase
+            .from("bookmarks")
+            .insert({
+                title: newTitle,
+                url: newUrl,
+                user_id: userId,
+            })
+            .select()
+            .single();
 
         if (error) {
             console.error("Error adding bookmark:", error);
             alert("Error adding bookmark");
-        } else {
+        } else if (data) {
+            console.log("Bookmark added successfully:", data);
+            setBookmarks((prev) => [data as Bookmark, ...prev]);
             setNewTitle("");
             setNewUrl("");
+            router.refresh();
         }
         setIsAdding(false);
     };
@@ -122,6 +148,9 @@ export default function DashboardClient({
         if (error) {
             console.error("Error deleting bookmark:", error);
             alert("Error deleting bookmark");
+        } else {
+            setBookmarks((prev) => prev.filter((b) => b.id !== id));
+            router.refresh();
         }
     };
 
