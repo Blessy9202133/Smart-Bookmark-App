@@ -1,6 +1,22 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
+// Define helper types for cookies
+type CookieOptions = {
+  path?: string;
+  httpOnly?: boolean;
+  secure?: boolean;
+  maxAge?: number;
+  sameSite?: boolean | "lax" | "strict" | "none";
+  domain?: string;
+};
+
+type CookieToSet = {
+  name: string;
+  value: string;
+  options?: CookieOptions;
+};
+
 export const updateSession = async (request: NextRequest) => {
   try {
     let response = NextResponse.next({
@@ -17,7 +33,7 @@ export const updateSession = async (request: NextRequest) => {
           getAll() {
             return request.cookies.getAll();
           },
-          setAll(cookiesToSet) {
+          setAll(cookiesToSet: CookieToSet[]) {
             cookiesToSet.forEach(({ name, value, options }) => {
               request.cookies.set({
                 name,
