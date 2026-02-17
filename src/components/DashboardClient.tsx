@@ -71,9 +71,8 @@ export default function DashboardClient({
                     event: "*",
                     schema: "public",
                     table: "bookmarks",
-                    filter: `user_id=eq.${userId}`,
                 },
-                (payload: any) => {
+                (payload) => {
                     if (payload.eventType === "INSERT") {
                         setBookmarks((prev) => [payload.new as Bookmark, ...prev]);
                     } else if (payload.eventType === "DELETE") {
