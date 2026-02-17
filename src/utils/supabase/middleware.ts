@@ -34,7 +34,7 @@ export const updateSession = async (request: NextRequest) => {
           setAll(cookiesToSet: CookieToSet[]) {
             // Update cookies in the request (server-side)
             cookiesToSet.forEach(({ name, value, options }) => {
-              request.cookies.set(name, value, options);
+              request.cookies.set(name, value, ...options);
             });
 
             // Create a fresh response and set cookies in the response
@@ -43,7 +43,7 @@ export const updateSession = async (request: NextRequest) => {
             });
 
             cookiesToSet.forEach(({ name, value, options }) => {
-              response.cookies.set(name, value, options);
+              response.cookies.set(name, value, ...options);
             });
           },
         },
